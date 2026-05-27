@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  @keyframes chat-float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+  }
+  @keyframes chat-glow {
+    0%, 100% { filter: drop-shadow(0 4px 12px rgba(15, 23, 42, 0.25)) drop-shadow(0 0 6px rgba(99, 102, 241, 0.25)); }
+    50%      { filter: drop-shadow(0 6px 16px rgba(15, 23, 42, 0.3))  drop-shadow(0 0 14px rgba(99, 102, 241, 0.55)); }
+  }
+  .chat-float { animation: chat-float 4s ease-in-out infinite; }
+  .chat-glow  { animation: chat-glow 3.2s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .chat-float, .chat-glow { animation: none; }
+  }
+}
