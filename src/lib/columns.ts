@@ -31,8 +31,15 @@ export const COLUMN_LABEL: Record<Column, string> = {
 };
 
 export function statusToColumn(status: string): Column {
+  // Hermes's kanban DB uses these status values:
+  //   ready / in_progress / triage  →  Pending (waiting on a human)
+  //   done                          →  Approved (the kanban CLI command is
+  //                                    `complete` but the stored status is
+  //                                    `done` — easy to get wrong)
+  //   archived                      →  Denied
+  //   blocked                       →  Needs edits
   switch (status) {
-    case "completed":
+    case "done":
       return "approved";
     case "archived":
       return "denied";
