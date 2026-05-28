@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import Link from "next/link";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -78,6 +77,7 @@ function DraggableCard({
   task: KanbanTask;
   sourceCol: Column;
 }) {
+  const router = useRouter();
   const draggable = ALLOWED[sourceCol].size > 0;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id,
@@ -85,8 +85,15 @@ function DraggableCard({
     disabled: !draggable,
   });
 
+  // Track whether the mouse actually moved between pointerdown and pointerup
+  // so we only navigate on real clicks, not on drag-ends. dnd-kit's pointer
+  // sensor has an 8px activation distance — anything under that fires neither
+  // a drag-start nor an `isDragging` state, so we'd otherwise navigate even
+  // after a small mouse-down-and-release used to start a drag attempt.
+  const downPos = useRef<{ x: number; y: number } | null>(null);
+
   const baseClasses =
-    "block rounded-lg border bg-white p-4 transition-colors";
+    "block rounded-lg border bg-white p-4 transition-colors select-none";
   const borderClasses = isDragging
     ? "border-slate-400 opacity-30"
     : "border-slate-200 hover:border-slate-300";
@@ -99,17 +106,29 @@ function DraggableCard({
       ref={setNodeRef}
       {...attributes}
       {...listeners}
+      role="button"
+      tabIndex={0}
+      onPointerDownCapture={(e) => {
+        downPos.current = { x: e.clientX, y: e.clientY };
+      }}
+      onClick={(e) => {
+        if (isDragging) return;
+        if (downPos.current) {
+          const dx = e.clientX - downPos.current.x;
+          const dy = e.clientY - downPos.current.y;
+          if (dx * dx + dy * dy > 16) return; // > 4px movement — was a drag-attempt, not a click
+        }
+        router.push(`/approvals/${task.id}`);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          router.push(`/approvals/${task.id}`);
+        }
+      }}
       className={`${baseClasses} ${borderClasses} ${cursorClasses}`}
     >
-      <Link
-        href={`/approvals/${task.id}`}
-        onClick={(e) => {
-          if (isDragging) e.preventDefault();
-        }}
-        draggable={false}
-      >
-        <TaskCardBody task={task} />
-      </Link>
+      <TaskCardBody task={task} />
     </div>
   );
 }
