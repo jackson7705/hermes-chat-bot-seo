@@ -75,7 +75,10 @@ export function taskToColumn(
       return "edits";
     case "done": {
       const c = latestExecutorComment ?? "";
-      if (c.startsWith("Completed:")) return "completed";
+      // "Executed:" is the legacy prefix from earlier executor runs — treat
+      // it the same as "Completed:" so cards from prior days land correctly.
+      if (c.startsWith("Completed:") || c.startsWith("Executed:"))
+        return "completed";
       if (c.startsWith("Office review needed:")) return "officeReview";
       // "Blocked: …" and "Unknown action type" both stay in Approved (with a
       // visible badge on the card). They represent infra/scope problems, not
@@ -108,9 +111,16 @@ export function parseArtifacts(
   latestExecutorComment?: string | null,
 ): { summary: string; artifacts: { label: string; href?: string }[] } {
   const c = latestExecutorComment ?? "";
-  if (!c.startsWith("Completed:"))
+  let body: string;
+  if (c.startsWith("Completed:")) {
+    body = c.slice("Completed:".length).trim();
+  } else if (c.startsWith("Executed:")) {
+    // Legacy prefix from the first executor run — same shape, just an older
+    // verb.
+    body = c.slice("Executed:".length).trim();
+  } else {
     return { summary: "", artifacts: [] };
-  const body = c.slice("Completed:".length).trim();
+  }
   // Split body by "Artifacts:" marker. Everything before is the summary,
   // everything after is a list of artifacts (comma- or newline-separated).
   const m = body.split(/\s*Artifacts:\s*/i);
