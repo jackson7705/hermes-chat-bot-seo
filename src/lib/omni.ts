@@ -163,6 +163,134 @@ export function listAllStrategies(): StrategySummary[] {
   return out.sort((a, b) => b.modifiedAt - a.modifiedAt);
 }
 
+// ----- Library: methodologies / processes / skills -----
+
+export type LibraryEntry = {
+  area: string; // second-level dir (strategy / research / execution / etc.)
+  slug: string; // file basename minus .md (or skill dirname)
+  title: string;
+  path: string; // relative to OMNI_ROOT
+  origin: "core" | "custom" | "overrides";
+};
+
+function scanCorpusDir(
+  kind: "methodologies" | "processes" | "skills",
+): LibraryEntry[] {
+  const out: LibraryEntry[] = [];
+  for (const origin of ["core", "custom", "overrides"] as const) {
+    const root = safeJoin(`${origin}/${kind}`);
+    if (!fs.existsSync(root)) continue;
+    const areas = fs
+      .readdirSync(root, { withFileTypes: true })
+      .filter((e) => e.isDirectory());
+    for (const areaEntry of areas) {
+      const area = areaEntry.name;
+      const areaDir = path.join(root, area);
+      if (kind === "skills") {
+        // Skills are directories with a SKILL.md inside.
+        const skillDirs = fs
+          .readdirSync(areaDir, { withFileTypes: true })
+          .filter((e) => e.isDirectory());
+        for (const skill of skillDirs) {
+          const skillPath = path.join(areaDir, skill.name, "SKILL.md");
+          if (!fs.existsSync(skillPath)) continue;
+          const content = fs.readFileSync(skillPath, "utf8");
+          out.push({
+            area,
+            slug: skill.name,
+            title: extractTitle(content, skill.name),
+            path: `${origin}/${kind}/${area}/${skill.name}/SKILL.md`,
+            origin,
+          });
+        }
+      } else {
+        const files = fs
+          .readdirSync(areaDir, { withFileTypes: true })
+          .filter((e) => e.isFile() && e.name.endsWith(".md"))
+          .filter((e) => e.name !== "README.md");
+        for (const file of files) {
+          const fp = path.join(areaDir, file.name);
+          const content = fs.readFileSync(fp, "utf8");
+          const slug = file.name.replace(/\.md$/, "");
+          out.push({
+            area,
+            slug,
+            title: extractTitle(content, slug),
+            path: `${origin}/${kind}/${area}/${file.name}`,
+            origin,
+          });
+        }
+      }
+    }
+  }
+  return out.sort((a, b) => {
+    if (a.area !== b.area) return a.area.localeCompare(b.area);
+    return a.title.localeCompare(b.title);
+  });
+}
+
+export function listMethodologies(): LibraryEntry[] {
+  return scanCorpusDir("methodologies");
+}
+
+export function listProcesses(): LibraryEntry[] {
+  return scanCorpusDir("processes");
+}
+
+export function listSkills(): LibraryEntry[] {
+  return scanCorpusDir("skills");
+}
+
+export function groupByArea(
+  entries: LibraryEntry[],
+): Record<string, LibraryEntry[]> {
+  const groups: Record<string, LibraryEntry[]> = {};
+  for (const e of entries) {
+    if (!groups[e.area]) groups[e.area] = [];
+    groups[e.area].push(e);
+  }
+  return groups;
+}
+
+// ----- Project outputs (audits / drafts / briefs / reports) -----
+
+export type ProjectOutput = {
+  kind: string; // outputs/<kind>/ subdir name
+  filename: string;
+  title: string;
+  modifiedAt: number;
+  path: string; // relative to OMNI_ROOT
+};
+
+export function listProjectOutputs(projectSlug: string): ProjectOutput[] {
+  const outputsDir = safeJoin(`custom/projects/${projectSlug}/outputs`);
+  if (!fs.existsSync(outputsDir)) return [];
+  const out: ProjectOutput[] = [];
+  const kinds = fs
+    .readdirSync(outputsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory());
+  for (const kindEntry of kinds) {
+    const kind = kindEntry.name;
+    const kindDir = path.join(outputsDir, kind);
+    const files = fs
+      .readdirSync(kindDir, { withFileTypes: true })
+      .filter((e) => e.isFile() && e.name.endsWith(".md"));
+    for (const file of files) {
+      const full = path.join(kindDir, file.name);
+      const stat = fs.statSync(full);
+      const content = fs.readFileSync(full, "utf8");
+      out.push({
+        kind,
+        filename: file.name,
+        title: extractTitle(content, file.name.replace(/\.md$/, "")),
+        modifiedAt: Math.floor(stat.mtimeMs / 1000),
+        path: `custom/projects/${projectSlug}/outputs/${kind}/${file.name}`,
+      });
+    }
+  }
+  return out.sort((a, b) => b.modifiedAt - a.modifiedAt);
+}
+
 export function readStrategy(
   projectSlug: string,
   strategySlug: string,
