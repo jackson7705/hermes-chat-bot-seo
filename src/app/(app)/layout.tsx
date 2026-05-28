@@ -26,9 +26,6 @@ const NAV: NavEntry[] = [
   { kind: "link", href: "/local", label: "Local SEO" },
   { kind: "link", href: "/reports", label: "Reports" },
 
-  { kind: "section", label: "Knowledge" },
-  { kind: "link", href: "/library", label: "Library" },
-
   { kind: "section", label: "Configuration" },
   { kind: "link", href: "/settings", label: "Settings" },
 ];

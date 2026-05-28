@@ -2,10 +2,9 @@ import Link from "next/link";
 import {
   listAllOutputs,
   listProcesses,
-  listMethodologies,
   listProjects,
 } from "@/lib/omni";
-import { SectionShell, ProcessGrid } from "@/components/section-shell";
+import { SectionShell, AskHermesHint, EmptyHint } from "@/components/section-shell";
 import { RunProcessForm } from "@/components/run-process-form";
 
 export const dynamic = "force-dynamic";
@@ -20,29 +19,19 @@ function formatDate(unix: number): string {
 
 export default function AuditsPage() {
   const auditProcesses = listProcesses().filter((p) => p.area === "analysis");
-  const auditMethodologies = listMethodologies().filter(
-    (m) =>
-      m.slug.includes("retrieval-readiness-writing") ||
-      m.slug.includes("information-gain") ||
-      m.slug.includes("schema-strategy"),
-  );
   const auditOutputs = listAllOutputs("audits");
   const projects = listProjects();
 
   return (
     <SectionShell
       title="Audits"
-      capability="Capability 05 — Audit a Site"
-      subtitle="Multi-angle site analysis with concrete findings. AIO readiness · Retrieval readiness · Publication velocity · Lane portfolio. Each audit produces a markdown deliverable in the project's outputs/audits/ folder."
+      subtitle="Multi-angle site analysis with concrete findings. Pick a client + audit type, click Run, and the deliverable lands here."
     >
-      <section className="mb-10">
-        <h2 className="text-sm font-semibold text-slate-900 mb-3">
-          Run an audit
-        </h2>
+      <section className="mb-8">
         <RunProcessForm
           ctaLabel="Run audit"
           ctaSubmitting="Submitting…"
-          successHint="Audit queued — Hermes is on it. The deliverable will appear in Recent audits below within ~2-5 minutes. This page auto-refreshes every 15s."
+          successHint="Audit queued — Hermes is on it. The deliverable will appear below within ~2-5 minutes. This page auto-refreshes."
           projects={projects.map((p) => ({ slug: p.slug, label: p.slug }))}
           processes={auditProcesses.map((p) => ({
             slug: p.slug,
@@ -53,22 +42,14 @@ export default function AuditsPage() {
         />
       </section>
 
-      <section className="mb-10">
+      <section className="mb-8">
         <h2 className="text-sm font-semibold text-slate-900 mb-3">
-          Available audit processes
-        </h2>
-        <ProcessGrid kind="processes" entries={auditProcesses} />
-      </section>
-
-      <section>
-        <h2 className="text-sm font-semibold text-slate-900 mb-3">
-          Recent audit deliverables ({auditOutputs.length})
+          Recent audits ({auditOutputs.length})
         </h2>
         {auditOutputs.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            No audits have been produced yet. Pick a client + audit type above
-            and click Run.
-          </p>
+          <EmptyHint>
+            No audits produced yet. Pick a client + audit type above and click Run.
+          </EmptyHint>
         ) : (
           <ul className="space-y-2">
             {auditOutputs.map((o) => (
@@ -86,7 +67,7 @@ export default function AuditsPage() {
                     </span>
                   </div>
                   <div className="text-xs text-slate-500 mt-1">
-                    {o.projectSlug} · <code className="font-mono">{o.filename}</code>
+                    {o.projectSlug}
                   </div>
                 </Link>
               </li>
@@ -95,14 +76,13 @@ export default function AuditsPage() {
         )}
       </section>
 
-      {auditMethodologies.length > 0 && (
-        <section className="mt-10 pt-8 border-t border-slate-200">
-          <h2 className="text-sm font-semibold text-slate-900 mb-3">
-            Related methodologies
-          </h2>
-          <ProcessGrid kind="methodologies" entries={auditMethodologies} />
-        </section>
-      )}
+      <AskHermesHint
+        examples={[
+          "Run an AIO readiness audit for air-sense-environmental",
+          "Audit Atlas Heating for retrieval readiness",
+          "What was the last audit produced for Air Sense?",
+        ]}
+      />
     </SectionShell>
   );
 }

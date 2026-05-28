@@ -1,81 +1,52 @@
-import { listProcesses, listMethodologies, listSkills } from "@/lib/omni";
-import { SectionShell, ProcessGrid, PlaceholderRunButton } from "@/components/section-shell";
+import { SectionShell, AskHermesHint, EmptyHint } from "@/components/section-shell";
 
 export const dynamic = "force-dynamic";
 
 export default function OutreachPage() {
-  const linkProcesses = listProcesses().filter((p) =>
-    [
-      "prospect-discovery",
-      "citation-shortlist-discovery",
-      "outreach-campaign-run",
-      "reply-triage",
-      "placement-tracker",
-      "guest-post-fulfillment",
-    ].includes(p.slug),
-  );
-  const setupProcesses = listProcesses().filter((p) => p.area === "setup");
-  const methodology = listMethodologies().filter((m) =>
-    [
-      "link-building-criteria",
-      "link-outreach-prospecting",
-      "link-outreach-reply-handling",
-      "cold-email-deliverability",
-      "guest-post-content-strategy",
-      "link-investment-estimation",
-      "citation-shortlist-targeting",
-    ].includes(m.slug),
-  );
-  const skills = listSkills().filter((s) =>
-    ["guest-post-brief-writer", "link-investment-estimator"].includes(s.slug),
-  );
-
   return (
     <SectionShell
       title="Outreach"
-      capability="Capability 07 — Link Building & Outreach At Scale"
-      subtitle="End-to-end prospecting through link verification. 5 prospect-discovery modes · citation shortlist targeting · auto-filter low-quality prospects · contact enrichment · campaign delivery · reply triage · placement tracker. Guest post fulfillment included."
+      subtitle="Link building + guest posts. End-to-end: prospect discovery → enrichment → personalised drafts → send → reply triage → placement tracking."
     >
-      <section className="mb-10">
-        <h2 className="text-sm font-semibold text-slate-900 mb-3">
-          Pipeline processes
+      <section className="mb-8 rounded-lg border border-slate-200 bg-white p-5">
+        <h2 className="text-sm font-semibold text-slate-900 mb-1">
+          Kick off outreach
         </h2>
-        <ProcessGrid kind="processes" entries={linkProcesses} />
+        <p className="text-xs text-slate-500 mb-4">
+          Ask Hermes to run discovery and prep a campaign. Placements track in
+          <code className="text-[10px] mx-1">outputs/placements/</code>;
+          campaign drafts in
+          <code className="text-[10px] mx-1">outputs/campaigns/</code>.
+        </p>
       </section>
 
-      <section className="mb-10">
-        <PlaceholderRunButton
-          label="Start an outreach campaign"
-          why="Set discovery mode (broken-link / gap / niche / citation / topical) + a target project. Hermes runs prospect discovery, enriches contacts, drafts personalised outreach, sends through Smartlead/Resend, classifies replies, and updates the placement tracker as links go live."
-        />
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-slate-900 mb-3">
+          Active campaigns
+        </h2>
+        <EmptyHint>
+          No campaigns running. Ask Hermes to start one.
+        </EmptyHint>
       </section>
 
-      {setupProcesses.length > 0 && (
-        <section className="mb-10">
-          <h2 className="text-sm font-semibold text-slate-900 mb-3">
-            Prerequisite setup
-          </h2>
-          <ProcessGrid kind="processes" entries={setupProcesses} />
-        </section>
-      )}
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-slate-900 mb-3">
+          Recent placements
+        </h2>
+        <EmptyHint>
+          No placements tracked yet.
+        </EmptyHint>
+      </section>
 
-      {skills.length > 0 && (
-        <section className="mb-10">
-          <h2 className="text-sm font-semibold text-slate-900 mb-3">
-            Generation + analysis skills
-          </h2>
-          <ProcessGrid kind="skills" entries={skills} />
-        </section>
-      )}
-
-      {methodology.length > 0 && (
-        <section className="mt-10 pt-8 border-t border-slate-200">
-          <h2 className="text-sm font-semibold text-slate-900 mb-3">
-            Underlying methodology
-          </h2>
-          <ProcessGrid kind="methodologies" entries={methodology} />
-        </section>
-      )}
+      <AskHermesHint
+        examples={[
+          "Find 25 broken-link prospects for air-sense in the home-improvement niche",
+          "Run a citation shortlist for Atlas Heating",
+          "Draft outreach emails for the prospects you just found",
+          "Triage the latest outreach replies for Air Sense",
+          "Confirm whether the Atlas guest post on homeguide.com is live",
+        ]}
+      />
     </SectionShell>
   );
 }

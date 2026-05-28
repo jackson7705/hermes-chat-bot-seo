@@ -1,40 +1,40 @@
-import { listMethodologies } from "@/lib/omni";
-import { SectionShell, ProcessGrid, PlaceholderRunButton } from "@/components/section-shell";
+import { SectionShell, AskHermesHint, EmptyHint } from "@/components/section-shell";
 
 export const dynamic = "force-dynamic";
 
 export default function LocalSeoPage() {
-  const methodology = listMethodologies().filter((m) =>
-    [
-      "local-landing-page-anatomy",
-      "geographic-page-hierarchy",
-      "review-acquisition",
-      "service-page-positioning",
-      "single-point-of-conversion",
-    ].includes(m.slug),
-  );
-
   return (
     <SectionShell
       title="Local SEO"
-      capability="Capability 09 — Local & Multi-Location SEO"
-      subtitle="Directly relevant to home-services accounts. Geographic page hierarchy design · single-location-page writer scaled across N locations · local landing page anatomy baked into every page · review acquisition methodology."
+      subtitle="Service-area + multi-location work. Geographic page hierarchies, single-location pages at scale, review acquisition."
     >
-      <section className="mb-10">
-        <PlaceholderRunButton
-          label="Generate multi-location page set"
-          why="Pick a service-area client + a list of locations. Hermes designs the geo hierarchy, drafts a location page per city (or zip) using the local-landing-page-anatomy methodology, and stages everything for review before publish. Variants for single-location and multi-location service businesses."
-        />
+      <section className="mb-8 rounded-lg border border-slate-200 bg-white p-5">
+        <h2 className="text-sm font-semibold text-slate-900 mb-1">
+          Plan local SEO work
+        </h2>
+        <p className="text-xs text-slate-500 mb-4">
+          Hermes designs the geo hierarchy, generates a location page per city,
+          and stages everything for review before publish.
+        </p>
       </section>
 
-      {methodology.length > 0 && (
-        <section>
-          <h2 className="text-sm font-semibold text-slate-900 mb-3">
-            Underlying methodology
-          </h2>
-          <ProcessGrid kind="methodologies" entries={methodology} />
-        </section>
-      )}
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-slate-900 mb-3">
+          Active multi-location work
+        </h2>
+        <EmptyHint>
+          No multi-location work in flight. Ask Hermes to start.
+        </EmptyHint>
+      </section>
+
+      <AskHermesHint
+        examples={[
+          "Design the geo hierarchy for Atlas Heating across St. Louis County, St. Charles County, Jefferson County",
+          "Generate location pages for the 12 zip codes Air Sense serves",
+          "What's the review-acquisition plan for Atlas?",
+          "Draft a service-area page for Air Sense focused on Chesterfield, MO",
+        ]}
+      />
     </SectionShell>
   );
 }

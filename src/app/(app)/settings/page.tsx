@@ -69,7 +69,6 @@ export default function SettingsPage() {
   return (
     <SectionShell
       title="Settings"
-      capability="Configuration"
       subtitle="Per-client credentials, integration health, team. The platform reads from /opt/data/omni/custom/projects/<slug>/.env on the VPS; mirror your Mac copy with rsync after edits."
     >
       <section className="mb-10">

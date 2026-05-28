@@ -1,6 +1,6 @@
-import { listProcesses, listMethodologies, listAllOutputs } from "@/lib/omni";
 import Link from "next/link";
-import { SectionShell, ProcessGrid, PlaceholderRunButton } from "@/components/section-shell";
+import { listAllOutputs } from "@/lib/omni";
+import { SectionShell, AskHermesHint, EmptyHint } from "@/components/section-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -12,70 +12,48 @@ function formatDate(unix: number): string {
 }
 
 export default function ContentPage() {
-  const execution = listProcesses().filter((p) => p.area === "execution");
-  const research = listProcesses().filter(
-    (p) =>
-      p.area === "research" &&
-      [
-        "content-planning",
-        "user-stories",
-        "stories-to-queries",
-      ].includes(p.slug),
-  );
-  const methodology = listMethodologies().filter((m) =>
-    [
-      "content-planning",
-      "content-lane-discipline",
-      "publication-velocity",
-      "backlog-topic-generation",
-      "content-refresh",
-      "answer-engine-optimization",
-      "producer-critic-revision-loop",
-      "section-first-content-production",
-      "editorial-review-framework",
-      "information-gain",
-      "intro-pattern-selection",
-      "title-tag-meta-description",
-    ].includes(m.slug),
-  );
   const drafts = listAllOutputs("drafts");
+  const refreshes = listAllOutputs("refreshes");
+  const briefs = listAllOutputs("briefs");
 
   return (
     <SectionShell
       title="Content"
-      capability="Capabilities 02-04, 06 — Plan, Produce, Refresh + AEO"
-      subtitle="The full pipeline. Brief or topic → finished, published page. Includes outline / section-by-section writing / title + FAQ + CTA / AI image gen / internal link injection / AEO rewrite / publish."
+      subtitle="Plan, produce, refresh, publish. The end-to-end pipeline from topic to live page — with AEO baked in."
     >
-      <section className="mb-10">
-        <h2 className="text-sm font-semibold text-slate-900 mb-3">
-          Production processes
+      <section className="mb-8 rounded-lg border border-slate-200 bg-white p-5">
+        <h2 className="text-sm font-semibold text-slate-900 mb-1">
+          Kick off content work
         </h2>
-        <ProcessGrid kind="processes" entries={execution} />
+        <p className="text-xs text-slate-500 mb-4">
+          Ask Hermes for what you need. Drafts land in <code className="text-[10px]">outputs/drafts/</code>;
+          publishes go through the Approvals kanban; refreshes save to <code className="text-[10px]">outputs/refreshes/</code>.
+        </p>
+        <ul className="space-y-1.5">
+          <li>
+            <code className="block text-sm text-indigo-900 bg-indigo-50 border border-indigo-200 rounded px-3 py-1.5">
+              Draft a new blog post for air-sense about radon testing kits
+            </code>
+          </li>
+          <li>
+            <code className="block text-sm text-indigo-900 bg-indigo-50 border border-indigo-200 rounded px-3 py-1.5">
+              Refresh the radon-mitigation page for Air Sense
+            </code>
+          </li>
+          <li>
+            <code className="block text-sm text-indigo-900 bg-indigo-50 border border-indigo-200 rounded px-3 py-1.5">
+              Generate the next 5 topics for Atlas Heating&apos;s backlog
+            </code>
+          </li>
+        </ul>
       </section>
 
-      <section className="mb-10">
-        <h2 className="text-sm font-semibold text-slate-900 mb-3">
-          Planning + research
-        </h2>
-        <ProcessGrid kind="processes" entries={research} />
-      </section>
-
-      <section className="mb-10">
-        <PlaceholderRunButton
-          label="Run content pipeline"
-          why="Pick a project + topic from the backlog → Hermes runs outline → section writing → FAQ/CTA → images → AEO rewrite → publishes to the configured CMS. Output is the live URL + the draft saved to outputs/drafts/."
-        />
-      </section>
-
-      <section className="mb-10">
+      <section className="mb-8">
         <h2 className="text-sm font-semibold text-slate-900 mb-3">
           Recent drafts ({drafts.length})
         </h2>
         {drafts.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            No drafts yet. Hermes-produced drafts land in{" "}
-            <code className="text-xs">custom/projects/&lt;slug&gt;/outputs/drafts/</code>.
-          </p>
+          <EmptyHint>No drafts yet. Ask Hermes to draft a post.</EmptyHint>
         ) : (
           <ul className="space-y-2">
             {drafts.map((d) => (
@@ -98,14 +76,57 @@ export default function ContentPage() {
         )}
       </section>
 
-      {methodology.length > 0 && (
-        <section className="mt-10 pt-8 border-t border-slate-200">
-          <h2 className="text-sm font-semibold text-slate-900 mb-3">
-            Underlying methodology
-          </h2>
-          <ProcessGrid kind="methodologies" entries={methodology} />
+      {(refreshes.length > 0 || briefs.length > 0) && (
+        <section className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {refreshes.length > 0 && (
+            <div>
+              <h3 className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-2">
+                Refresh proposals ({refreshes.length})
+              </h3>
+              <ul className="space-y-2">
+                {refreshes.slice(0, 5).map((r) => (
+                  <li key={r.path}>
+                    <Link
+                      href={`/projects/${r.projectSlug}?tab=outputs&file=${encodeURIComponent(`outputs/${r.kind}/${r.filename}`)}`}
+                      className="block text-sm text-slate-700 hover:text-slate-900 truncate"
+                    >
+                      {r.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {briefs.length > 0 && (
+            <div>
+              <h3 className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-2">
+                Briefs ({briefs.length})
+              </h3>
+              <ul className="space-y-2">
+                {briefs.slice(0, 5).map((b) => (
+                  <li key={b.path}>
+                    <Link
+                      href={`/projects/${b.projectSlug}?tab=outputs&file=${encodeURIComponent(`outputs/${b.kind}/${b.filename}`)}`}
+                      className="block text-sm text-slate-700 hover:text-slate-900 truncate"
+                    >
+                      {b.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
+
+      <AskHermesHint
+        examples={[
+          "Draft a new blog post for air-sense about radon testing kits",
+          "Refresh the radon-mitigation page for Air Sense",
+          "What pages need refreshing on the air-sense site?",
+          "Generate the next 5 topics for Atlas Heating's backlog",
+        ]}
+      />
     </SectionShell>
   );
 }
