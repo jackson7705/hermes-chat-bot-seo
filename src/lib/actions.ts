@@ -5,6 +5,8 @@ import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { readFile, readProjectEnv } from "@/lib/omni";
+import { marked } from "marked";
 
 const execFileAsync = promisify(execFile);
 
@@ -145,6 +147,104 @@ export async function markCompletedTask(
   }
   revalidatePath("/approvals");
   revalidatePath(`/approvals/${taskId}`);
+}
+
+/**
+ * Publish a draft markdown file to the project's WordPress site.
+ *
+ * Reads /opt/data/omni/custom/projects/<slug>/outputs/drafts/<filename>.md,
+ * extracts the H1 as the title, converts the body to HTML, and POSTs to
+ * <WP_URL>/wp-json/wp/v2/posts with HTTP basic auth from the project's
+ * .env. Defaults to publishStatus="draft" so the operator can review in
+ * WP admin before the post goes live.
+ *
+ * Returns either a clickable WP URL (preview link) + admin edit URL, or an
+ * error string the UI can render inline.
+ */
+export async function publishDraftToWordPress(
+  projectSlug: string,
+  draftFilename: string,
+  publishStatus: "draft" | "publish",
+): Promise<
+  | { ok: true; url: string; editUrl: string; status: string }
+  | { ok: false; error: string }
+> {
+  await requireUserEmail();
+
+  const env = readProjectEnv(projectSlug);
+  if (!env.WP_URL || !env.WP_USER || !env.WP_APP_PASSWORD) {
+    return {
+      ok: false,
+      error: `WordPress credentials missing for ${projectSlug}. Add WP_URL, WP_USER, and WP_APP_PASSWORD to custom/projects/${projectSlug}/.env on your Mac, then rsync to the VPS.`,
+    };
+  }
+
+  const draftPath = `custom/projects/${projectSlug}/outputs/drafts/${draftFilename}`;
+  const content = readFile(draftPath);
+  if (!content) {
+    return { ok: false, error: `Draft file not found: ${draftPath}` };
+  }
+
+  // Title = first H1, fallback to filename. Body = everything after the H1.
+  const lines = content.split("\n");
+  let titleLine = -1;
+  let title = draftFilename.replace(/\.md$/, "");
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^#\s+(.+)$/);
+    if (m) {
+      title = m[1].trim();
+      titleLine = i;
+      break;
+    }
+  }
+  const bodyMarkdown =
+    titleLine >= 0 ? lines.slice(titleLine + 1).join("\n") : content;
+  const html = await marked.parse(bodyMarkdown.trim());
+
+  const wpBase = env.WP_URL.replace(/\/$/, "");
+  const auth = Buffer.from(
+    `${env.WP_USER}:${env.WP_APP_PASSWORD}`,
+  ).toString("base64");
+
+  let res: Response;
+  try {
+    res = await fetch(`${wpBase}/wp-json/wp/v2/posts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${auth}`,
+      },
+      body: JSON.stringify({
+        title,
+        content: html,
+        status: publishStatus,
+      }),
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: `Couldn't reach WordPress at ${wpBase}: ${(err as Error).message}`,
+    };
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    return {
+      ok: false,
+      error: `WP returned ${res.status}: ${text.slice(0, 300)}`,
+    };
+  }
+
+  type WpPost = { id: number; link: string; status: string };
+  const data = (await res.json()) as WpPost;
+  revalidatePath("/content");
+  revalidatePath(`/projects/${projectSlug}`);
+  return {
+    ok: true,
+    url: data.link,
+    editUrl: `${wpBase}/wp-admin/post.php?post=${data.id}&action=edit`,
+    status: data.status,
+  };
 }
 
 /**

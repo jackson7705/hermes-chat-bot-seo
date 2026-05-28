@@ -277,6 +277,22 @@ export function listAllOutputs(
   return out.sort((a, b) => b.modifiedAt - a.modifiedAt);
 }
 
+/** Read a project's .env into a flat map. Used by server actions that need
+ *  to make authenticated API calls (WP, Resend, GSC, etc.). */
+export function readProjectEnv(projectSlug: string): Record<string, string> {
+  const envPath = safeJoin(`custom/projects/${projectSlug}/.env`);
+  if (!fs.existsSync(envPath)) return {};
+  const content = fs.readFileSync(envPath, "utf8");
+  const out: Record<string, string> = {};
+  for (const line of content.split("\n")) {
+    const l = line.trim();
+    if (!l || l.startsWith("#") || !l.includes("=")) continue;
+    const idx = l.indexOf("=");
+    out[l.slice(0, idx).trim()] = l.slice(idx + 1).trim();
+  }
+  return out;
+}
+
 /** Project .env status — file presence + key list (no values). */
 export function listProjectEnvStatus(): {
   slug: string;
