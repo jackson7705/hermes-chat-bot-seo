@@ -25,7 +25,12 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Stateless app, no native deps, no SQLite — just the standalone bundle.
+# docker CLI is required so server actions can shell out to
+# `docker exec hermes kanban …` via the host's mounted docker.sock.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static

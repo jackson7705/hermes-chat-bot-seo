@@ -93,3 +93,97 @@ export function readFile(relPath: string): string | null {
   if (!fs.existsSync(full) || !fs.statSync(full).isFile()) return null;
   return fs.readFileSync(full, "utf8");
 }
+
+export type StrategyStep = {
+  line: number;
+  text: string;
+  done: boolean;
+};
+
+export type StrategySummary = {
+  projectSlug: string;
+  strategySlug: string; // file basename minus .md
+  title: string; // first H1 or filename
+  totalSteps: number;
+  completedSteps: number;
+  percent: number; // 0..100
+  nextStep: string | null; // first unchecked step text, or null if all done / none
+  modifiedAt: number; // mtime seconds
+};
+
+const CHECKBOX_RE = /^\s*[-*]\s*\[( |x|X)\]\s+(.*)$/;
+
+export function parseStrategySteps(content: string): StrategyStep[] {
+  const lines = content.split("\n");
+  const steps: StrategyStep[] = [];
+  lines.forEach((raw, i) => {
+    const m = raw.match(CHECKBOX_RE);
+    if (!m) return;
+    steps.push({ line: i + 1, text: m[2].trim(), done: m[1].toLowerCase() === "x" });
+  });
+  return steps;
+}
+
+function extractTitle(content: string, fallback: string): string {
+  for (const line of content.split("\n")) {
+    const m = line.match(/^#\s+(.+)$/);
+    if (m) return m[1].trim();
+  }
+  return fallback;
+}
+
+export function listAllStrategies(): StrategySummary[] {
+  const projects = listProjects();
+  const out: StrategySummary[] = [];
+  for (const project of projects) {
+    const stratDir = safeJoin(`custom/projects/${project.slug}/strategies`);
+    if (!fs.existsSync(stratDir)) continue;
+    const files = fs.readdirSync(stratDir).filter((f) => f.endsWith(".md"));
+    for (const file of files) {
+      const full = path.join(stratDir, file);
+      const stat = fs.statSync(full);
+      const content = fs.readFileSync(full, "utf8");
+      const steps = parseStrategySteps(content);
+      const completed = steps.filter((s) => s.done).length;
+      const slug = file.replace(/\.md$/, "");
+      const title = extractTitle(content, slug);
+      const nextStep = steps.find((s) => !s.done)?.text ?? null;
+      out.push({
+        projectSlug: project.slug,
+        strategySlug: slug,
+        title,
+        totalSteps: steps.length,
+        completedSteps: completed,
+        percent: steps.length === 0 ? 0 : Math.round((completed / steps.length) * 100),
+        nextStep,
+        modifiedAt: Math.floor(stat.mtimeMs / 1000),
+      });
+    }
+  }
+  return out.sort((a, b) => b.modifiedAt - a.modifiedAt);
+}
+
+export function readStrategy(
+  projectSlug: string,
+  strategySlug: string,
+): { content: string; steps: StrategyStep[]; title: string; summary: StrategySummary } | null {
+  const rel = `custom/projects/${projectSlug}/strategies/${strategySlug}.md`;
+  const content = readFile(rel);
+  if (content === null) return null;
+  const steps = parseStrategySteps(content);
+  const completed = steps.filter((s) => s.done).length;
+  const title = extractTitle(content, strategySlug);
+  const summary: StrategySummary = {
+    projectSlug,
+    strategySlug,
+    title,
+    totalSteps: steps.length,
+    completedSteps: completed,
+    percent: steps.length === 0 ? 0 : Math.round((completed / steps.length) * 100),
+    nextStep: steps.find((s) => !s.done)?.text ?? null,
+    modifiedAt: Math.floor(
+      fs.statSync(safeJoin(rel)).mtimeMs / 1000,
+    ),
+  };
+  return { content, steps, title, summary };
+}

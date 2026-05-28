@@ -17,10 +17,19 @@ services:
       # Omni corpus (read-only) + users DB (writable)
       OMNI_ROOT: /opt/omni
       USERS_DB_PATH: /data/users.db
+      KANBAN_DB_PATH: /opt/kanban/boards/approvals/kanban.db
+      HERMES_CONTAINER: hermes-agent-p6xk-hermes-agent-1
+      KANBAN_BOARD: approvals
       NEXTAUTH_URL: https://hermes-chat.srv1709148.hstgr.cloud
     volumes:
       # Omni corpus mirrored from the Hermes container's deploy-key clone
       - /docker/hermes-agent-p6xk/data/omni:/opt/omni:ro
+      # Hermes kanban (SQLite per-board). NOT :ro — SQLite needs to touch
+      # WAL/SHM files in the same dir even on readonly opens. Server code
+      # is SELECT-only.
+      - /docker/hermes-agent-p6xk/data/kanban:/opt/kanban
+      # Docker socket for `docker exec hermes kanban …` server actions
+      - /var/run/docker.sock:/var/run/docker.sock
       # Local users.db lives here on the host
       - ./data:/data
     labels:
