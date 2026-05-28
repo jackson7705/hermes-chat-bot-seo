@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Hermes Chat Bot — Example",
-  description: "A floating in-app chat widget powered by Hermes Agent.",
+  title: "Omni",
+  description: "Omnipresence project workspace — files, strategies, approvals, and a Hermes assistant.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

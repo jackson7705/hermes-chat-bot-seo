@@ -2,7 +2,12 @@
 FROM node:24-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --legacy-peer-deps
+# better-sqlite3 has a native binding — needs python3 + make + g++ to compile.
+# These get left behind in deps stage; runner is slim.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3 make g++ \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm ci --legacy-peer-deps
 
 ## --- Stage 2: builder ---
 FROM node:24-bookworm-slim AS builder

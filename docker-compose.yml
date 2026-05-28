@@ -14,6 +14,15 @@ services:
       # needed because the chat-bot container is on hermes's bridge network.
       HERMES_URL: http://hermes-agent-p6xk-hermes-agent-1:8642/v1
       HERMES_MODEL: hermes-agent
+      # Omni corpus (read-only) + users DB (writable)
+      OMNI_ROOT: /opt/omni
+      USERS_DB_PATH: /data/users.db
+      NEXTAUTH_URL: https://hermes-chat.srv1709148.hstgr.cloud
+    volumes:
+      # Omni corpus mirrored from the Hermes container's deploy-key clone
+      - /docker/hermes-agent-p6xk/data/omni:/opt/omni:ro
+      # Local users.db lives here on the host
+      - ./data:/data
     labels:
       - traefik.enable=true
       - traefik.http.routers.hermes-chat.rule=Host(`hermes-chat.srv1709148.hstgr.cloud`)
