@@ -13,24 +13,24 @@ const NAV: NavEntry[] = [
   { kind: "link", href: "/", label: "Dashboard" },
 
   { kind: "section", label: "New business" },
-  { kind: "stub", href: "/prospects", label: "Prospects" },
+  { kind: "link", href: "/prospects", label: "Prospects" },
 
   { kind: "section", label: "Active work" },
   { kind: "link", href: "/projects", label: "Clients" },
   { kind: "link", href: "/strategies", label: "Strategies" },
   { kind: "link", href: "/approvals", label: "Approvals" },
-  { kind: "stub", href: "/content", label: "Content" },
-  { kind: "stub", href: "/audits", label: "Audits" },
-  { kind: "stub", href: "/outreach", label: "Outreach" },
-  { kind: "stub", href: "/authority", label: "Authority Network" },
-  { kind: "stub", href: "/local", label: "Local SEO" },
-  { kind: "stub", href: "/reports", label: "Reports" },
+  { kind: "link", href: "/content", label: "Content" },
+  { kind: "link", href: "/audits", label: "Audits" },
+  { kind: "link", href: "/outreach", label: "Outreach" },
+  { kind: "link", href: "/authority", label: "Authority Network" },
+  { kind: "link", href: "/local", label: "Local SEO" },
+  { kind: "link", href: "/reports", label: "Reports" },
 
   { kind: "section", label: "Knowledge" },
   { kind: "link", href: "/library", label: "Library" },
 
   { kind: "section", label: "Configuration" },
-  { kind: "stub", href: "/settings", label: "Settings" },
+  { kind: "link", href: "/settings", label: "Settings" },
 ];
 
 export default async function AppLayout({

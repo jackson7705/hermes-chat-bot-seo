@@ -262,6 +262,42 @@ export type ProjectOutput = {
   path: string; // relative to OMNI_ROOT
 };
 
+/** Outputs across ALL projects, optionally filtered to one kind. */
+export function listAllOutputs(
+  filterKind?: string,
+): (ProjectOutput & { projectSlug: string })[] {
+  const projects = listProjects();
+  const out: (ProjectOutput & { projectSlug: string })[] = [];
+  for (const p of projects) {
+    for (const o of listProjectOutputs(p.slug)) {
+      if (filterKind && o.kind !== filterKind) continue;
+      out.push({ ...o, projectSlug: p.slug });
+    }
+  }
+  return out.sort((a, b) => b.modifiedAt - a.modifiedAt);
+}
+
+/** Project .env status — file presence + key list (no values). */
+export function listProjectEnvStatus(): {
+  slug: string;
+  hasEnv: boolean;
+  keys: string[];
+}[] {
+  return listProjects().map((p) => {
+    const envPath = safeJoin(`custom/projects/${p.slug}/.env`);
+    if (!fs.existsSync(envPath)) {
+      return { slug: p.slug, hasEnv: false, keys: [] };
+    }
+    const content = fs.readFileSync(envPath, "utf8");
+    const keys = content
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#") && l.includes("="))
+      .map((l) => l.split("=")[0]);
+    return { slug: p.slug, hasEnv: true, keys };
+  });
+}
+
 export function listProjectOutputs(projectSlug: string): ProjectOutput[] {
   const outputsDir = safeJoin(`custom/projects/${projectSlug}/outputs`);
   if (!fs.existsSync(outputsDir)) return [];
