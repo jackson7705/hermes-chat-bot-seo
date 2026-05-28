@@ -116,20 +116,11 @@ export default async function ProjectPage({
                   </div>
                   <ul className="space-y-0.5">
                     {groupedOutputs[kind].map((output) => {
-                      const isActive =
-                        activeFile === `outputs/${kind}/${output.filename}`;
                       return (
                         <li key={output.filename}>
                           <Link
-                            href={`/projects/${slug}?tab=outputs&file=${encodeURIComponent(
-                              `outputs/${kind}/${output.filename}`,
-                            )}`}
-                            scroll={false}
-                            className={`block py-1 px-2 rounded text-xs ${
-                              isActive
-                                ? "bg-indigo-50 text-indigo-700 font-medium"
-                                : "text-slate-700 hover:bg-slate-50"
-                            }`}
+                            href={`/outputs/${slug}/${kind}/${encodeURIComponent(output.filename)}`}
+                            className="block py-1 px-2 rounded text-xs text-slate-700 hover:bg-slate-50"
                           >
                             <div className="truncate">{output.title}</div>
                             <div className="text-[10px] text-slate-400 mt-0.5">

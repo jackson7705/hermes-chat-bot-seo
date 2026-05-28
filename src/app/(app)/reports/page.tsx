@@ -44,7 +44,7 @@ export default function ReportsPage() {
             {reports.map((r) => (
               <li key={r.path}>
                 <Link
-                  href={`/projects/${r.projectSlug}?tab=outputs&file=${encodeURIComponent(`outputs/${r.kind}/${r.filename}`)}`}
+                  href={`/outputs/${r.projectSlug}/${r.kind}/${encodeURIComponent(r.filename)}`}
                   className="block rounded-lg border border-slate-200 bg-white p-4 hover:border-slate-300"
                 >
                   <div className="flex items-baseline justify-between gap-3">

@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Print stylesheet — when the operator hits Cmd+P on a document viewer
+   page we want a clean, page-paginated PDF: no app chrome, no chat orb,
+   no toolbar. Just the document. The .document-print class on the page
+   wrapper opts in so we don't accidentally print other surfaces ugly. */
+@media print {
+  body { background: #ffffff !important; }
+  aside, header.no-print, .no-print, [data-no-print] { display: none !important; }
+  main { overflow: visible !important; }
+  .document-print {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  /* Avoid splitting headings + their first paragraph across pages. */
+  h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+  /* Tight margins, lots of room. */
+  @page { margin: 0.6in 0.5in; }
+}
+
 @layer utilities {
   @keyframes chat-float {
     0%, 100% { transform: translateY(0); }

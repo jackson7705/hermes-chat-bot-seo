@@ -63,7 +63,7 @@ export default function ContentPage() {
                 className="rounded-lg border border-slate-200 bg-white p-4"
               >
                 <Link
-                  href={`/projects/${d.projectSlug}?tab=outputs&file=${encodeURIComponent(`outputs/${d.kind}/${d.filename}`)}`}
+                  href={`/outputs/${d.projectSlug}/${d.kind}/${encodeURIComponent(d.filename)}`}
                   className="block"
                 >
                   <div className="flex items-baseline justify-between gap-3">
@@ -99,7 +99,7 @@ export default function ContentPage() {
                 {refreshes.slice(0, 5).map((r) => (
                   <li key={r.path}>
                     <Link
-                      href={`/projects/${r.projectSlug}?tab=outputs&file=${encodeURIComponent(`outputs/${r.kind}/${r.filename}`)}`}
+                      href={`/outputs/${r.projectSlug}/${r.kind}/${encodeURIComponent(r.filename)}`}
                       className="block text-sm text-slate-700 hover:text-slate-900 truncate"
                     >
                       {r.title}
@@ -118,7 +118,7 @@ export default function ContentPage() {
                 {briefs.slice(0, 5).map((b) => (
                   <li key={b.path}>
                     <Link
-                      href={`/projects/${b.projectSlug}?tab=outputs&file=${encodeURIComponent(`outputs/${b.kind}/${b.filename}`)}`}
+                      href={`/outputs/${b.projectSlug}/${b.kind}/${encodeURIComponent(b.filename)}`}
                       className="block text-sm text-slate-700 hover:text-slate-900 truncate"
                     >
                       {b.title}

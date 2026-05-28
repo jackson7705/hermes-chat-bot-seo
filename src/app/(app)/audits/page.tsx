@@ -55,7 +55,7 @@ export default function AuditsPage() {
             {auditOutputs.map((o) => (
               <li key={o.path}>
                 <Link
-                  href={`/projects/${o.projectSlug}?tab=outputs&file=${encodeURIComponent(`outputs/${o.kind}/${o.filename}`)}`}
+                  href={`/outputs/${o.projectSlug}/${o.kind}/${encodeURIComponent(o.filename)}`}
                   className="block rounded-lg border border-slate-200 bg-white p-4 hover:border-slate-300"
                 >
                   <div className="flex items-baseline justify-between gap-3">
