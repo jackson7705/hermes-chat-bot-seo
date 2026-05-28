@@ -1,0 +1,34 @@
+services:
+  hermes-chat:
+    image: ghcr.io/jackson7705/hermes-chat-bot-seo:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "3000"
+    env_file:
+      - .env
+    environment:
+      # Internal Docker-network call to the Hermes API Server — no public TLS
+      # needed because the chat-bot container is on hermes's bridge network.
+      HERMES_URL: http://hermes-agent-p6xk-hermes-agent-1:8642/v1
+      HERMES_MODEL: hermes-agent
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hermes-chat.rule=Host(`hermes-chat.srv1709148.hstgr.cloud`)
+      - traefik.http.routers.hermes-chat.entrypoints=websecure
+      - traefik.http.routers.hermes-chat.tls.certresolver=letsencrypt
+      - traefik.http.services.hermes-chat.loadbalancer.server.port=3000
+    networks:
+      # Hermes Agent's compose network — chat-bot joins it so the proxy
+      # route can reach the API server by container name.
+      - hermes-net
+      - default
+
+networks:
+  hermes-net:
+    external: true
+    name: hermes-agent-p6xk_default
+  default:
+    name: hermes-chat_default
