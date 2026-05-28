@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -152,6 +152,126 @@ export async function markCompletedTask(
  * Status stays `done` (it was approved by a human); the column is determined
  * by the executor-style comment we add.
  */
+/**
+ * Submit a "Run: <process-slug> for <project-slug>" task. Creates the kanban
+ * task in done status (auto-approved — the user explicitly clicked Run), then
+ * spawns the executor in the background so the work starts within seconds
+ * instead of waiting for the next 5-min cron.
+ *
+ * The executor's executor.md handles the Run: prefix: reads the process file,
+ * applies it to the project, writes the deliverable to
+ *   custom/projects/<slug>/outputs/<kind>/YYYY-MM-DD-<process-slug>.md
+ * and posts `Completed: …` with the artifact path so the column-mapper
+ * lands it in the Completed column.
+ */
+export async function submitProcessRun(
+  projectSlug: string,
+  processPath: string, // e.g. "core/processes/analysis/aio-readiness-audit.md"
+  outputKind: string, // e.g. "audits"
+  processSlug: string, // e.g. "aio-readiness-audit"
+  processTitle: string, // for the task title — human-readable
+): Promise<{ taskId: string | null }> {
+  const email = await requireUserEmail();
+
+  const today = new Date().toISOString().slice(0, 10);
+  const taskTitle = `Run: ${processSlug} for ${projectSlug}`;
+  const taskBody = `${processTitle} — requested by ${email} at ${new Date().toISOString()}.
+
+PROCESS
+  Read /opt/data/omni/${processPath}
+  Apply it to project ${projectSlug}.
+
+PROJECT CONTEXT
+  /opt/data/omni/custom/projects/${projectSlug}/
+  (Read README.md, project-config.md, brand/, strategies/, notes.md, and rules.md if present, to inform the run.)
+
+OUTPUT
+  Save the deliverable to /opt/data/omni/custom/projects/${projectSlug}/outputs/${outputKind}/${today}-${processSlug}.md
+  Use standard markdown. Lead with a one-paragraph executive summary, then the detailed findings per the process file.
+
+ON APPROVE STEPS
+  1. Read the process at /opt/data/omni/${processPath}
+  2. Read the project context at /opt/data/omni/custom/projects/${projectSlug}/
+  3. Apply the process — use shell tools (cat, grep, ls) freely
+  4. Write the deliverable to the OUTPUT path
+  5. Post a kanban comment: \`Completed: Ran ${processSlug} for ${projectSlug}. Artifacts: custom/projects/${projectSlug}/outputs/${outputKind}/${today}-${processSlug}.md\`
+`;
+
+  // Create the task
+  const { stdout } = await execFileAsync("docker", [
+    "exec",
+    "-u",
+    "hermes",
+    HERMES_CONTAINER,
+    "hermes",
+    "kanban",
+    "--board",
+    KANBAN_BOARD,
+    "create",
+    taskTitle,
+    "--body",
+    taskBody,
+    "--idempotency-key",
+    `run:${processSlug}:${projectSlug}:${Date.now()}`,
+  ]);
+
+  const match = stdout.match(/Created\s+(t_[a-f0-9]+)/);
+  const taskId = match?.[1] ?? null;
+
+  if (taskId) {
+    // Audit comment from the operator (so we know who triggered it)
+    await execFileAsync("docker", [
+      "exec",
+      "-u",
+      "hermes",
+      HERMES_CONTAINER,
+      "hermes",
+      "kanban",
+      "--board",
+      KANBAN_BOARD,
+      "comment",
+      "--author",
+      email,
+      taskId,
+      `Run requested by ${email}.`,
+    ]);
+    // Auto-approve (status=done) so the executor pre-check picks it up.
+    await execFileAsync("docker", [
+      "exec",
+      "-u",
+      "hermes",
+      HERMES_CONTAINER,
+      "hermes",
+      "kanban",
+      "complete",
+      taskId,
+    ]);
+
+    // Fire the executor in the background — don't await. The detached child
+    // outlives this server action so the audit runs while the form clears.
+    const child = spawn(
+      "docker",
+      [
+        "exec",
+        "-d",
+        "-u",
+        "hermes",
+        "-w",
+        "/opt/data/omni",
+        HERMES_CONTAINER,
+        "sh",
+        "/opt/data/run-executor.sh",
+      ],
+      { detached: true, stdio: "ignore" },
+    );
+    child.unref();
+  }
+
+  revalidatePath("/audits");
+  revalidatePath("/approvals");
+  return { taskId };
+}
+
 export async function flagOfficeReviewTask(
   taskId: string,
   reason: string,

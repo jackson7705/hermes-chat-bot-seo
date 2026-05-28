@@ -3,8 +3,10 @@ import {
   listAllOutputs,
   listProcesses,
   listMethodologies,
+  listProjects,
 } from "@/lib/omni";
-import { SectionShell, ProcessGrid, PlaceholderRunButton } from "@/components/section-shell";
+import { SectionShell, ProcessGrid } from "@/components/section-shell";
+import { RunProcessForm } from "@/components/run-process-form";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,7 @@ export default function AuditsPage() {
       m.slug.includes("schema-strategy"),
   );
   const auditOutputs = listAllOutputs("audits");
+  const projects = listProjects();
 
   return (
     <SectionShell
@@ -34,16 +37,27 @@ export default function AuditsPage() {
     >
       <section className="mb-10">
         <h2 className="text-sm font-semibold text-slate-900 mb-3">
-          Available audits
+          Run an audit
         </h2>
-        <ProcessGrid kind="processes" entries={auditProcesses} />
+        <RunProcessForm
+          ctaLabel="Run audit"
+          ctaSubmitting="Submitting…"
+          successHint="Audit queued — Hermes is on it. The deliverable will appear in Recent audits below within ~2-5 minutes. This page auto-refreshes every 15s."
+          projects={projects.map((p) => ({ slug: p.slug, label: p.slug }))}
+          processes={auditProcesses.map((p) => ({
+            slug: p.slug,
+            title: p.title,
+            path: p.path,
+            outputKind: "audits",
+          }))}
+        />
       </section>
 
       <section className="mb-10">
-        <PlaceholderRunButton
-          label="Run audit on a project"
-          why="Triggering an audit fires the matching process against a chosen client. Output lands at custom/projects/<slug>/outputs/audits/. Wiring the trigger button is the next iteration — for now Hermes runs audits via the daily orchestrator + executor cron."
-        />
+        <h2 className="text-sm font-semibold text-slate-900 mb-3">
+          Available audit processes
+        </h2>
+        <ProcessGrid kind="processes" entries={auditProcesses} />
       </section>
 
       <section>
@@ -52,8 +66,8 @@ export default function AuditsPage() {
         </h2>
         {auditOutputs.length === 0 ? (
           <p className="text-sm text-slate-500">
-            No audits have been produced yet. Once Hermes runs an audit it will
-            land in <code className="text-xs">custom/projects/&lt;slug&gt;/outputs/audits/</code>.
+            No audits have been produced yet. Pick a client + audit type above
+            and click Run.
           </p>
         ) : (
           <ul className="space-y-2">
