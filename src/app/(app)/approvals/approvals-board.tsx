@@ -73,12 +73,14 @@ function TaskCardBody({ task }: { task: KanbanTask }) {
 function DraggableCard({
   task,
   sourceCol,
+  busy,
 }: {
   task: KanbanTask;
   sourceCol: Column;
+  busy: boolean;
 }) {
   const router = useRouter();
-  const draggable = ALLOWED[sourceCol].size > 0;
+  const draggable = ALLOWED[sourceCol].size > 0 && !busy;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id,
     data: { sourceCol },
@@ -136,9 +138,11 @@ function DraggableCard({
 function DroppableColumn({
   col,
   tasks,
+  busy,
 }: {
   col: Column;
   tasks: KanbanTask[];
+  busy: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${col}` });
 
@@ -163,7 +167,7 @@ function DroppableColumn({
         <ul className="space-y-2">
           {tasks.map((task) => (
             <li key={task.id}>
-              <DraggableCard task={task} sourceCol={col} />
+              <DraggableCard task={task} sourceCol={col} busy={busy} />
             </li>
           ))}
         </ul>
@@ -178,9 +182,10 @@ export function ApprovalsBoard({
   buckets: Record<Column, KanbanTask[]>;
 }) {
   const router = useRouter();
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const [activeTask, setActiveTask] = useState<KanbanTask | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -207,9 +212,18 @@ export function ApprovalsBoard({
     if (!sourceCol) return;
     const destCol = (e.over.id as string).replace("col-", "") as Column;
     if (sourceCol === destCol) return;
-    if (!ALLOWED[sourceCol].has(destCol)) return;
+    if (!ALLOWED[sourceCol].has(destCol)) {
+      setError(`Can't move from ${sourceCol} to ${destCol}.`);
+      return;
+    }
+    if (isPending) {
+      setError("Hold on — previous move still in flight.");
+      return;
+    }
 
     const taskId = e.active.id as string;
+    setPendingTaskId(taskId);
+    setError(null);
     startTransition(async () => {
       try {
         if (destCol === "approved") await approveTask(taskId);
@@ -218,9 +232,12 @@ export function ApprovalsBoard({
         else if (destCol === "edits")
           await requestEditsTask(taskId, "(needs edits — see comments)");
         else if (destCol === "pending") await unblockTask(taskId);
-        router.refresh();
+        // Full reload — eliminates any chance of stale RSC cache showing
+        // the card in its old column after a successful move.
+        window.location.reload();
       } catch (err) {
-        setError((err as Error).message);
+        setError((err as Error).message || "Move failed.");
+        setPendingTaskId(null);
       }
     });
   };
@@ -231,9 +248,29 @@ export function ApprovalsBoard({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
+      {/* Status banner — sticks to the top so feedback is always visible */}
+      {(isPending || error) && (
+        <div
+          role="status"
+          className={`sticky top-0 z-30 mb-4 rounded-lg px-4 py-2 text-sm ${
+            error
+              ? "bg-rose-50 text-rose-800 border border-rose-200"
+              : "bg-indigo-50 text-indigo-800 border border-indigo-200"
+          }`}
+        >
+          {error
+            ? error
+            : `Moving ${pendingTaskId ?? ""}… holding other drops until this one lands.`}
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {COLUMN_ORDER.map((col) => (
-          <DroppableColumn key={col} col={col} tasks={buckets[col]} />
+          <DroppableColumn
+            key={col}
+            col={col}
+            tasks={buckets[col]}
+            busy={isPending}
+          />
         ))}
       </div>
       <DragOverlay>
@@ -243,7 +280,6 @@ export function ApprovalsBoard({
           </div>
         )}
       </DragOverlay>
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
     </DndContext>
   );
 }
