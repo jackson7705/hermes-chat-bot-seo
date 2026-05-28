@@ -9,7 +9,9 @@ FROM node:24-bookworm-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+# Repo has no public/ directory — create an empty one so the runner's
+# `COPY --from=builder /app/public` doesn't fail.
+RUN mkdir -p public && npm run build
 
 ## --- Stage 3: runner ---
 FROM node:24-bookworm-slim AS runner
