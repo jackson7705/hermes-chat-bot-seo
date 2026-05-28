@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ChatIcon } from "./chat-icon";
 import { ChatWindow } from "./chat-window";
 import type { ChatMessage } from "./types";
@@ -75,6 +76,7 @@ export function ChatWidget({
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const pathname = usePathname();
 
   const {
     activeId,
@@ -181,6 +183,9 @@ export function ChatWidget({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: snapshot.map(({ role, content }) => ({ role, content })),
+            // Pathname lets the proxy inject "operator is currently looking at X"
+            // into Hermes's system prompt — so "run an audit" knows the client.
+            context: { pathname },
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -205,7 +210,7 @@ export function ChatWidget({
         setIsLoading(false);
       }
     },
-    [endpoint, setMessages]
+    [endpoint, pathname, setMessages]
   );
 
   if (!mounted) return null;
