@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -190,6 +190,16 @@ export function ApprovalsBoard({
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
+
+  // Auto-refresh every 10s so autonomous changes (Hermes executor completing
+  // tasks, the daily orchestrator queuing new ones) show up without the
+  // operator having to hit reload. Paused while a manual transition is in
+  // flight so we don't fight with the user's drag.
+  useEffect(() => {
+    if (isPending) return;
+    const id = setInterval(() => router.refresh(), 10_000);
+    return () => clearInterval(id);
+  }, [isPending, router]);
 
   const findTask = (id: string): KanbanTask | null => {
     for (const col of COLUMN_ORDER) {
