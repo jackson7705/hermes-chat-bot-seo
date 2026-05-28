@@ -8,17 +8,21 @@ import {
   commentOnTask,
   requestEditsTask,
   unblockTask,
+  markCompletedTask,
+  flagOfficeReviewTask,
 } from "@/lib/actions";
-import { statusToColumn, COLUMN_LABEL } from "@/lib/columns";
+import { type Column, COLUMN_LABEL } from "@/lib/columns";
 
 type FormKind = "reject" | "edits";
 
 export function TaskActions({
   taskId,
-  status,
+  status: _status,
+  column,
 }: {
   taskId: string;
   status: string;
+  column: Column;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -26,8 +30,6 @@ export function TaskActions({
   const [comment, setComment] = useState("");
   const [openForm, setOpenForm] = useState<FormKind | null>(null);
   const [formText, setFormText] = useState("");
-
-  const column = statusToColumn(status);
 
   const handle = (fn: () => Promise<void>, onDone?: () => void) =>
     startTransition(async () => {
@@ -171,7 +173,93 @@ export function TaskActions({
         </div>
       )}
 
-      {(column === "approved" || column === "denied") && (
+      {column === "approved" && (
+        <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 space-y-3 text-sm text-indigo-900">
+          <p>
+            Approved — executor will process this within ~5 minutes. You can
+            also force a terminal state if you don&apos;t want to wait:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() =>
+                handle(
+                  () =>
+                    markCompletedTask(taskId, "(marked complete manually)"),
+                  () => router.push("/approvals"),
+                )
+              }
+              className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-60"
+            >
+              Mark completed
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() =>
+                handle(
+                  () =>
+                    flagOfficeReviewTask(taskId, "(flagged manually)"),
+                  () => router.push("/approvals"),
+                )
+              }
+              className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium bg-orange-600 text-white hover:bg-orange-500 disabled:opacity-60"
+            >
+              Flag for office review
+            </button>
+          </div>
+        </div>
+      )}
+
+      {column === "officeReview" && (
+        <div className="rounded-lg border border-orange-300 bg-orange-50 px-4 py-3 space-y-3 text-sm text-orange-900">
+          <p>
+            Flagged for office review. After you&apos;ve addressed the rule or
+            regulation that fired, choose where this lands:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() =>
+                handle(
+                  () =>
+                    markCompletedTask(
+                      taskId,
+                      "(office review passed — marked complete)",
+                    ),
+                  () => router.push("/approvals"),
+                )
+              }
+              className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-60"
+            >
+              Office review passed — mark completed
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() =>
+                handle(
+                  () => rejectTask(taskId, "(failed office review)"),
+                  () => router.push("/approvals"),
+                )
+              }
+              className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium bg-rose-600 text-white hover:bg-rose-500 disabled:opacity-60"
+            >
+              Failed review — deny
+            </button>
+          </div>
+        </div>
+      )}
+
+      {column === "completed" && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          Completed. Artifacts are listed above. This card is terminal.
+        </div>
+      )}
+
+      {column === "denied" && (
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
           This item has been resolved (
           <span className="font-medium">{COLUMN_LABEL[column]}</span>).

@@ -16,6 +16,7 @@ import {
 import {
   COLUMN_LABEL,
   COLUMN_ORDER,
+  approvedBadge,
   type Column,
   type KanbanTask,
 } from "@/lib/columns";
@@ -24,6 +25,8 @@ import {
   rejectTask,
   requestEditsTask,
   unblockTask,
+  markCompletedTask,
+  flagOfficeReviewTask,
 } from "@/lib/actions";
 
 function formatRelative(unix: number): string {
@@ -36,26 +39,37 @@ function formatRelative(unix: number): string {
 
 const COLUMN_ACCENT: Record<Column, string> = {
   pending: "border-slate-300 text-slate-900",
-  approved: "border-emerald-300 text-emerald-700",
+  approved: "border-indigo-300 text-indigo-700",
+  officeReview: "border-orange-300 text-orange-700",
+  completed: "border-emerald-300 text-emerald-700",
   denied: "border-rose-300 text-rose-700",
   edits: "border-amber-300 text-amber-700",
 };
 
 const COLUMN_DROP_HINT: Record<Column, string> = {
   pending: "ring-2 ring-slate-400/60",
-  approved: "ring-2 ring-emerald-500/60",
+  approved: "ring-2 ring-indigo-500/60",
+  officeReview: "ring-2 ring-orange-500/60",
+  completed: "ring-2 ring-emerald-500/60",
   denied: "ring-2 ring-rose-500/60",
   edits: "ring-2 ring-amber-500/60",
 };
 
+// Allowed manual transitions. Approved → Completed / Office Review / Denied
+// is an OVERRIDE — normally the executor moves cards into Completed / Office
+// Review by writing its categorised comment. But the operator can also force
+// a move when needed.
 const ALLOWED: Record<Column, Set<Column>> = {
   pending: new Set<Column>(["approved", "denied", "edits"]),
+  approved: new Set<Column>(["completed", "officeReview", "denied"]),
+  officeReview: new Set<Column>(["approved", "completed", "denied"]),
   edits: new Set<Column>(["pending"]),
-  approved: new Set<Column>(),
+  completed: new Set<Column>(),
   denied: new Set<Column>(),
 };
 
 function TaskCardBody({ task }: { task: KanbanTask }) {
+  const badge = approvedBadge(task.latestExecutorComment);
   return (
     <>
       <h3 className="font-medium text-sm text-slate-900 leading-snug">
@@ -66,6 +80,17 @@ function TaskCardBody({ task }: { task: KanbanTask }) {
         <span aria-hidden>·</span>
         <span>{formatRelative(task.created_at)}</span>
       </div>
+      {badge && (
+        <div
+          className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${
+            badge.tone === "warning"
+              ? "bg-amber-100 text-amber-800"
+              : "bg-slate-100 text-slate-700"
+          }`}
+        >
+          {badge.label}
+        </div>
+      )}
     </>
   );
 }
@@ -242,6 +267,14 @@ export function ApprovalsBoard({
         else if (destCol === "edits")
           await requestEditsTask(taskId, "(needs edits — see comments)");
         else if (destCol === "pending") await unblockTask(taskId);
+        else if (destCol === "completed")
+          // Manual override: operator marks a task complete bypassing the
+          // executor. We still go through approveTask (status=done) and add
+          // a "Completed: …" executor-style comment so the column mapping
+          // picks it up.
+          await markCompletedTask(taskId, "(marked complete manually)");
+        else if (destCol === "officeReview")
+          await flagOfficeReviewTask(taskId, "(flagged for office review)");
         // Full reload — eliminates any chance of stale RSC cache showing
         // the card in its old column after a successful move.
         window.location.reload();
@@ -273,7 +306,7 @@ export function ApprovalsBoard({
             : `Moving ${pendingTaskId ?? ""}… holding other drops until this one lands.`}
         </div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {COLUMN_ORDER.map((col) => (
           <DroppableColumn
             key={col}

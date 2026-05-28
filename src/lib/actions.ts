@@ -117,3 +117,54 @@ export async function unblockTask(taskId: string): Promise<void> {
   revalidatePath("/approvals");
   revalidatePath(`/approvals/${taskId}`);
 }
+
+/**
+ * Manual override: mark a task fully complete without the executor.
+ * Writes a `hermes-executor`-authored "Completed: …" comment so the
+ * column-mapper puts it in the Completed bucket. Also marks status=done if
+ * the task isn't already there.
+ */
+export async function markCompletedTask(
+  taskId: string,
+  note: string,
+): Promise<void> {
+  const email = await requireUserEmail();
+  const text = note.trim() || "(no notes)";
+  await hermesKanban([
+    "comment",
+    "--author",
+    "hermes-executor",
+    taskId,
+    `Completed: ${text} Artifacts: (none captured — marked complete manually by ${email})`,
+  ]);
+  // No-op if already done; idempotent.
+  try {
+    await hermesKanban(["complete", taskId]);
+  } catch {
+    /* already complete is fine */
+  }
+  revalidatePath("/approvals");
+  revalidatePath(`/approvals/${taskId}`);
+}
+
+/**
+ * Manual override: flag a task for office review (rule / regulation check).
+ * Status stays `done` (it was approved by a human); the column is determined
+ * by the executor-style comment we add.
+ */
+export async function flagOfficeReviewTask(
+  taskId: string,
+  reason: string,
+): Promise<void> {
+  const email = await requireUserEmail();
+  const text = reason.trim() || "(manual flag)";
+  await hermesKanban([
+    "comment",
+    "--author",
+    "hermes-executor",
+    taskId,
+    `Office review needed: ${text} — flagged by ${email} for human review before any further automated action.`,
+  ]);
+  revalidatePath("/approvals");
+  revalidatePath(`/approvals/${taskId}`);
+}
